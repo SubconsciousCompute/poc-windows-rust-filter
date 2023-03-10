@@ -1,0 +1,44 @@
+[build]
+# We build for Microsoft Visual C(++)
+target = "x86_64-pc-windows-msvc"
+
+rustflags = [
+    # Pre Link Args
+
+    # Simply supresses the startup banner containing the copyright message and the version number
+    "-Z", "pre-link-arg=/NOLOGO",
+    # Marks the executable as compatible with Data Execution Prevention (DEP). DEP is a feature in Microsoft Windows
+    # that marks data pages as non-executable. This prevents an attacker from injecting malicious code into those data
+    # pages, that can then get executed
+    "-Z", "pre-link-arg=/NXCOMPAT",
+    # Tells the linker to not link in any default libraries, since those won't be available when writing a kernel
+    # driver
+    "-Z", "pre-link-arg=/NODEFAULTLIB",
+    # Specifies the subsystem or the environment to use for the executable. NATIVE provides us with an environment
+    # suitable for building a kernel mode driver for Windows NT and derivates
+    "-Z", "pre-link-arg=/SUBSYSTEM:NATIVE",
+    # Tells the linker that we are building a Windows NT (and derivates) kernel mode driver
+    "-Z", "pre-link-arg=/DRIVER",
+    # Generates an executable image that can be randomly rebased at load time by using the Address Space Layout
+    # Randomization (ASLR) feature. ASLR is a feature that randomizes the virtual memory allocations, such that the
+    # locations of heap, stacks and the code are randomized, to effectively make buffer overflow attacks less trivial to
+    # exploit
+    "-Z", "pre-link-arg=/DYNAMICBASE",
+    # Tells the linker to not generate a Manifest file
+    "-Z", "pre-link-arg=/MANIFEST:NO",
+
+    # Post Link Args
+
+    # Specifies the linker optimizations to apply. /OPT:REF eliminates functions and data that are never referenced.
+    # /OPT:ICF performs identiical COMDAT (common data) folding
+    "-C", "link-arg=/OPT:REF,ICF",
+    # Tells the linker that the entry point of our driver will be the DriverEntry function
+    "-C", "link-arg=/ENTRY:DriverEntry",
+    # Merges the .edata section into the .rdata section
+    "-C", "link-arg=/MERGE:.edata=.rdata",
+    # Merges the .rustcsection into the.datasection. Executables consist of a number of sections such as .text(code),
+    # .rdata(read-only or constant data), .data(initialized data) and .bss`(uninitialized data)
+    "-C", "link-arg=/MERGE:.rustc=.data",
+    # Specifies that the digital signature of the binary image must be checked at load time
+    "-C", "link-arg=/INTEGRITYCHECK",
+]

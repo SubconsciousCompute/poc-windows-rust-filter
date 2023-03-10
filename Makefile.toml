@@ -1,6 +1,5 @@
 [env]
 DRIVER_NAME = "driver"
-OUTPUT_PATH = "build"
 DDK_PLATFORM = "x64"
 VC_BUILD_DIR = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
 
@@ -32,9 +31,3 @@ signtool sign /fd SHA256 /a /v /s PrivateCertStore /n DriverCertificate /t http:
 
 [tasks.all]
 dependencies = ["build-driver", "rename", "sign"]
-
-[tasks.rebuild]
-script = '''
-    cargo make clean
-    cargo make all
-'''

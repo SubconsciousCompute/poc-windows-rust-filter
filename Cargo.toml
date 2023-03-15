@@ -21,4 +21,7 @@ thiserror = "1.0"
 winreg = "0.11.0"
 
 [dependencies]
-windows-kernel-sys = { path = "windows-kernel-sys"}
+windows-kernel-sys = { path = "windows-kernel-sys" }
+windows-kernel-macros = { path = "windows-kernel-macros" }
+windows-kernel-string = {path = "windows-kernel-string"}
+windows-kernel-alloc = {path = "windows-kernel-alloc"}

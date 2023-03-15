@@ -1,56 +1,40 @@
 #![no_std]
 #![allow(non_snake_case)]
 
+extern crate alloc;
+use windows_kernel_alloc;
+use windows_kernel_alloc::kernel_alloc::POOL_TAG;
+
+pub mod shared_def;
+
 use core::panic::PanicInfo;
 use core::ptr::null_mut;
+use windows_kernel_macros::{InitializeObjectAttributes, NT_SUCCESS, PAGED_CODE};
+use windows_kernel_string::UNICODE_STRING;
 
 use windows_kernel_sys::base::_FLT_PREOP_CALLBACK_STATUS::FLT_PREOP_SUCCESS_NO_CALLBACK;
 use windows_kernel_sys::base::{
     DRIVER_OBJECT, FLT_FILESYSTEM_TYPE, FLT_FILTER_UNLOAD_FLAGS, FLT_INSTANCE_QUERY_TEARDOWN_FLAGS,
     FLT_INSTANCE_SETUP_FLAGS, FLT_INSTANCE_TEARDOWN_FLAGS, FLT_OPERATION_REGISTRATION,
-    FLT_PREOP_CALLBACK_STATUS, FLT_REGISTRATION, FLT_REGISTRATION_VERSION, NTSTATUS,
-    PCFLT_RELATED_OBJECTS, PFLT_CALLBACK_DATA, PFLT_FILTER, PVOID, STATUS_SUCCESS, ULONG,
-    UNICODE_STRING, USHORT,
+    FLT_PORT_ALL_ACCESS, FLT_PREOP_CALLBACK_STATUS, FLT_REGISTRATION, FLT_REGISTRATION_VERSION,
+    NTSTATUS, OBJECT_ATTRIBUTES, OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, PCFLT_RELATED_OBJECTS,
+    PCHAR, PFLT_CALLBACK_DATA, PFLT_FILTER, PFLT_PORT, PSECURITY_DESCRIPTOR, PULONG, PVOID,
+    STATUS_SUCCESS, ULONG, USHORT,
 };
 use windows_kernel_sys::fltmgr::{
-    DbgPrint, FltRegisterFilter, FltStartFiltering, FltUnregisterFilter,
+    strcpy, DbgPrint, FltBuildDefaultSecurityDescriptor, FltCloseClientPort,
+    FltCloseCommunicationPort, FltCreateCommunicationPort, FltFreeSecurityDescriptor,
+    FltRegisterFilter, FltStartFiltering, FltUnregisterFilter,
 };
 
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}
+static mut PORT: PFLT_PORT = null_mut();
+static mut CLIENT_PORT: PFLT_PORT = null_mut();
 
-#[macro_export]
-macro_rules! NT_SUCCESS {
-    ($status:expr) => {
-        $status as NTSTATUS >= 0
-    };
-}
-
-#[macro_export]
-macro_rules! PAGED_CODE {
-    () => {
-        unsafe {
-            if u64::from(windows_kernel_sys::fltmgr::KeGetCurrentIrql())
-                > windows_kernel_sys::base::APC_LEVEL as u64
-            {
-                return windows_kernel_sys::base::STATUS_UNSUCCESSFUL;
-            }
-        }
-    };
-}
-
-///
 /// The minifilter handle that results from a call to FltRegisterFilter
 /// NOTE: This handle must be passed to FltUnregisterFilter during minifilter unloading
-///
 static mut G_MINIFILTER_HANDLE: PFLT_FILTER = null_mut();
 
-
-///
 /// The FLT_REGISTRATION structure provides information about a file system minifilter to the filter manager.
-///
 const G_FILTER_REGISTRATION: FLT_REGISTRATION = FLT_REGISTRATION {
     Size: core::mem::size_of::<FLT_REGISTRATION>() as USHORT, //  Size
     Version: FLT_REGISTRATION_VERSION as USHORT,
@@ -122,9 +106,9 @@ unsafe extern "C" fn PreOperationCreate(
 extern "C" fn InstanceFilterUnloadCallback(_Flags: FLT_FILTER_UNLOAD_FLAGS) -> NTSTATUS {
     PAGED_CODE!();
 
-
     unsafe {
-        DbgPrint("Unloading\0\n".as_ptr() as _);
+        DbgPrint("Unloading rust minifilter\0\n".as_ptr() as _);
+        FltCloseCommunicationPort(PORT);
 
         FltUnregisterFilter(G_MINIFILTER_HANDLE);
     }
@@ -170,6 +154,10 @@ pub extern "system" fn DriverEntry(
     driver: &mut DRIVER_OBJECT,
     _registry_path: *const UNICODE_STRING,
 ) -> NTSTATUS {
+    let mut sd: PSECURITY_DESCRIPTOR = null_mut();
+    let mut oa: OBJECT_ATTRIBUTES = unsafe { core::mem::zeroed() };
+    let mut name: UNICODE_STRING = UNICODE_STRING::create("\\mf");
+
     unsafe {
         DbgPrint("Hello from Rust!\0".as_ptr() as _);
     }
@@ -184,23 +172,98 @@ pub extern "system" fn DriverEntry(
         return status;
     }
 
-    driver.DriverUnload = Some(driver_exit);
+    status = unsafe { FltBuildDefaultSecurityDescriptor(&mut sd, FLT_PORT_ALL_ACCESS) };
 
-
-    //
-    // start minifilter driver
-    //
-    status = unsafe { FltStartFiltering(G_MINIFILTER_HANDLE) };
-
-    if !NT_SUCCESS!(status) {
+    if NT_SUCCESS!(status) {
         unsafe {
-            FltUnregisterFilter(G_MINIFILTER_HANDLE);
+            InitializeObjectAttributes(
+                &mut oa,
+                &mut name,
+                OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
+                null_mut(),
+                sd,
+            );
+        }
+
+        status = unsafe {
+            FltCreateCommunicationPort(
+                G_MINIFILTER_HANDLE,
+                &mut PORT,
+                &mut oa,
+                null_mut(),
+                Some(MiniConnect),
+                Some(MiniDisconnect),
+                Some(MiniSendRec),
+                1,
+            )
+        };
+
+        unsafe {
+            FltFreeSecurityDescriptor(sd);
+        }
+
+        if NT_SUCCESS!(status) {
+            // driver.DriverUnload = Some(driver_exit);
+
+            // start minifilter driver
+            status = unsafe { FltStartFiltering(G_MINIFILTER_HANDLE) };
+
+            if !NT_SUCCESS!(status) {
+                unsafe {
+                    FltUnregisterFilter(G_MINIFILTER_HANDLE);
+                }
+            }
         }
     }
 
     status
 }
 
+unsafe extern "C" fn MiniConnect(
+    ClientPort: PFLT_PORT,
+    ServerPortCookie: PVOID,
+    ConnectionContext: PVOID,
+    SizeOfContext: ULONG,
+    ConnectionPortCookie: *mut PVOID,
+) -> NTSTATUS {
+    CLIENT_PORT = ClientPort;
+    DbgPrint("Rust connect fromm application\n\0".as_ptr() as _);
+
+    STATUS_SUCCESS
+}
+
+unsafe extern "C" fn MiniDisconnect(ConnectionCookie: PVOID) {
+    DbgPrint("Rust disconnect form application\n\0".as_ptr() as _);
+    FltCloseClientPort(G_MINIFILTER_HANDLE, &mut CLIENT_PORT);
+}
+
+unsafe extern "C" fn MiniSendRec(
+    PortCookie: PVOID,
+    InputBuffer: PVOID,
+    InputBufferLength: ULONG,
+    OutputBuffer: PVOID,
+    OutputBufferLength: ULONG,
+    ReturnOutputBufferLength: PULONG,
+) -> NTSTATUS {
+    // let mut msg: PCHAR = "Rust from kernel".as_mut_ptr() as *mut i8;
+    unsafe {
+        DbgPrint(
+            "Rust message from application: %s\n\0".as_ptr() as _,
+            InputBuffer as PCHAR,
+        );
+    }
+
+    unsafe {
+        strcpy(
+            OutputBuffer as PCHAR,
+            "Rust from kernel".as_ptr() as *mut i8,
+        );
+    }
+
+    STATUS_SUCCESS
+}
+
+/*
 unsafe extern "C" fn driver_exit(_driver: *mut DRIVER_OBJECT) {
     FltUnregisterFilter(G_MINIFILTER_HANDLE);
 
@@ -208,3 +271,4 @@ unsafe extern "C" fn driver_exit(_driver: *mut DRIVER_OBJECT) {
         DbgPrint("\nBye bye from Rust!\0".as_ptr() as _);
     }
 }
+*/

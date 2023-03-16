@@ -28,22 +28,16 @@ pub const NULL: PVOID = 0 as PVOID;
 #[inline]
 pub unsafe fn InitializeObjectAttributes(
     p: windows_kernel_sys::base::POBJECT_ATTRIBUTES,
-    n: windows_kernel_string::PUNICODE_STRING,
+    n: windows_kernel_sys::base::PUNICODE_STRING,
     a: windows_kernel_sys::base::ULONG,
     r: windows_kernel_sys::base::HANDLE,
     s: windows_kernel_sys::base::PVOID,
 ) {
-    let mut n = windows_kernel_sys::base::_UNICODE_STRING{
-        Length: (*n).Length,
-        MaximumLength: (*n).MaximumLength,
-        Buffer: (*n).ptr as *mut u16,
-    };
-
     use core::mem::size_of;
-    (*p).Length = size_of::<windows_kernel_sys::base::OBJECT_ATTRIBUTES>() as windows_kernel_sys::base::ULONG;
+    (*p).Length = size_of::<windows_kernel_sys::base::OBJECT_ATTRIBUTES>() as  windows_kernel_sys::base::ULONG;
     (*p).RootDirectory = r;
     (*p).Attributes = a;
-    (*p).ObjectName = &mut n;
+    (*p).ObjectName = n;
     (*p).SecurityDescriptor = s;
     (*p).SecurityQualityOfService = NULL;
 }

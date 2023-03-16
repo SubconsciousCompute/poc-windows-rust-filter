@@ -31,7 +31,7 @@ impl<'a> From<&'a [u8]> for ANSI_STRING {
         let mut str = ANSI_STRING::default();
 
         let mut buffer = buffer.to_vec();
-        if *buffer.last().unwrap() != 0 {
+        if *buffer.last().expect("bad unwrap on From<&'a [u8]> for ANSI_STRING") != 0 {
             //let mut buffer = buffer.to_vec();
             buffer.push(0);
         }
@@ -127,7 +127,7 @@ impl<'a> From<&'a [u16]> for UNICODE_STRING {
         let mut str = UNICODE_STRING::default();
 
         let mut buffer = buffer.to_vec();
-        if *buffer.last().unwrap() == 0 {
+        if *buffer.last().expect("bad unwrap on From<&'a [u16]> for UNICODE_STRING") == 0 {
             buffer.push(0);
         }
 

@@ -2,12 +2,12 @@
 #![allow(non_snake_case)]
 
 extern crate alloc;
+
 use windows_kernel_alloc;
 use windows_kernel_alloc::kernel_alloc::POOL_TAG;
 
-pub mod shared_def;
-
 use core::panic::PanicInfo;
+use core::ptr;
 use core::ptr::null_mut;
 use windows_kernel_macros::{InitializeObjectAttributes, NT_SUCCESS, PAGED_CODE};
 use windows_kernel_string::UNICODE_STRING;
@@ -21,6 +21,7 @@ use windows_kernel_sys::base::{
     PCHAR, PFLT_CALLBACK_DATA, PFLT_FILTER, PFLT_PORT, PSECURITY_DESCRIPTOR, PULONG, PVOID,
     STATUS_SUCCESS, ULONG, USHORT,
 };
+use windows_kernel_sys::c_int;
 use windows_kernel_sys::fltmgr::{
     strcpy, DbgPrint, FltBuildDefaultSecurityDescriptor, FltCloseClientPort,
     FltCloseCommunicationPort, FltCreateCommunicationPort, FltFreeSecurityDescriptor,
@@ -42,10 +43,10 @@ const G_FILTER_REGISTRATION: FLT_REGISTRATION = FLT_REGISTRATION {
     ContextRegistration: null_mut(),
     OperationRegistration: G_CALLBACKS.as_ptr(),
     FilterUnloadCallback: Some(InstanceFilterUnloadCallback),
-    InstanceSetupCallback: Some(InstanceSetupCallback),
-    InstanceQueryTeardownCallback: Some(InstanceQueryTeardownCallback),
-    InstanceTeardownStartCallback: Some(InstanceTeardownStartCallback),
-    InstanceTeardownCompleteCallback: Some(InstanceTeardownCompleteCallback),
+    InstanceSetupCallback: None,            //Some(InstanceSetupCallback),
+    InstanceQueryTeardownCallback: None,    // Some(InstanceQueryTeardownCallback),
+    InstanceTeardownStartCallback: None,    //Some(InstanceTeardownStartCallback),
+    InstanceTeardownCompleteCallback: None, //Some(InstanceTeardownCompleteCallback),
     GenerateFileNameCallback: None,
     NormalizeNameComponentCallback: None,
     NormalizeContextCleanupCallback: None,
@@ -74,9 +75,9 @@ unsafe extern "C" fn InstanceTeardownCompleteCallback(
 ///
 const G_CALLBACKS: &[FLT_OPERATION_REGISTRATION] = {
     &[
-        FLT_OPERATION_REGISTRATION::new()
-            .set_major_function(FLT_OPERATION_REGISTRATION::IRP_MJ_CREATE)
-            .set_preop(Some(PreOperationCreate)),
+        // FLT_OPERATION_REGISTRATION::new()
+        // .set_major_function(FLT_OPERATION_REGISTRATION::IRP_MJ_CREATE)
+        // .set_preop(Some(PreOperationCreate)),
         FLT_OPERATION_REGISTRATION::new()
             .set_major_function(FLT_OPERATION_REGISTRATION::IRP_MJ_OPERATION_END),
     ]
@@ -93,21 +94,19 @@ unsafe extern "C" fn PreOperationCreate(
     let k = &(*(*(*Data).Iopb).TargetFileObject).FileName;
 
     unsafe {
-        DbgPrint("%wZ\n".as_ptr() as _, k);
+        DbgPrint("%wZ\n\0".as_ptr() as _, k);
     }
 
     FLT_PREOP_SUCCESS_NO_CALLBACK
 }
 
-///
 /// This is called before a filter is unloaded.
 /// If NULL is specified for this routine, then the filter can never be unloaded.
-///
 extern "C" fn InstanceFilterUnloadCallback(_Flags: FLT_FILTER_UNLOAD_FLAGS) -> NTSTATUS {
     PAGED_CODE!();
 
     unsafe {
-        DbgPrint("Unloading rust minifilter\0\n".as_ptr() as _);
+        DbgPrint("Unloading rust minifilter\n\0".as_ptr() as _);
         FltCloseCommunicationPort(PORT);
 
         FltUnregisterFilter(G_MINIFILTER_HANDLE);
@@ -156,11 +155,13 @@ pub extern "system" fn DriverEntry(
 ) -> NTSTATUS {
     let mut sd: PSECURITY_DESCRIPTOR = null_mut();
     let mut oa: OBJECT_ATTRIBUTES = unsafe { core::mem::zeroed() };
-    let mut name: UNICODE_STRING = UNICODE_STRING::create("\\mf");
+    let mut name = "\\mf";
 
     unsafe {
-        DbgPrint("Hello from Rust!\0".as_ptr() as _);
+        DbgPrint("Hello from Rust!\n\0".as_ptr() as _);
     }
+
+    // driver.DriverUnload = Some(driver_exit);
 
     //
     // register minifilter driver
@@ -168,21 +169,34 @@ pub extern "system" fn DriverEntry(
     let mut status: NTSTATUS =
         unsafe { FltRegisterFilter(driver, &G_FILTER_REGISTRATION, &mut G_MINIFILTER_HANDLE) };
 
+    unsafe {
+        DbgPrint("1 Here\n\0".as_ptr() as _);
+    }
+
     if !NT_SUCCESS!(status) {
         return status;
     }
 
+    unsafe {
+        DbgPrint("2 Here\n\0".as_ptr() as _);
+    }
+
     status = unsafe { FltBuildDefaultSecurityDescriptor(&mut sd, FLT_PORT_ALL_ACCESS) };
+
+    let name = UNICODE_STRING::create(name);
 
     if NT_SUCCESS!(status) {
         unsafe {
             InitializeObjectAttributes(
                 &mut oa,
-                &mut name,
-                OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
+                &mut name.as_base_unicode(),
+                OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE,
                 null_mut(),
                 sd,
             );
+        }
+        unsafe {
+            DbgPrint("3 Here\n\0".as_ptr() as _);
         }
 
         status = unsafe {
@@ -202,7 +216,14 @@ pub extern "system" fn DriverEntry(
             FltFreeSecurityDescriptor(sd);
         }
 
+        unsafe {
+            DbgPrint("4 Here\n\0".as_ptr() as _);
+        }
+
         if NT_SUCCESS!(status) {
+            unsafe {
+                DbgPrint("5 Here\n\0".as_ptr() as _);
+            }
             // driver.DriverUnload = Some(driver_exit);
 
             // start minifilter driver
@@ -210,8 +231,15 @@ pub extern "system" fn DriverEntry(
 
             if !NT_SUCCESS!(status) {
                 unsafe {
+                    DbgPrint("6 Here\0\n".as_ptr() as _);
+                }
+                unsafe {
                     FltUnregisterFilter(G_MINIFILTER_HANDLE);
                 }
+            }
+        } else {
+            unsafe {
+                FltCloseCommunicationPort(PORT);
             }
         }
     }
@@ -227,7 +255,7 @@ unsafe extern "C" fn MiniConnect(
     ConnectionPortCookie: *mut PVOID,
 ) -> NTSTATUS {
     CLIENT_PORT = ClientPort;
-    DbgPrint("Rust connect fromm application\n\0".as_ptr() as _);
+    DbgPrint("Rust connect from application\n\0".as_ptr() as _);
 
     STATUS_SUCCESS
 }
@@ -245,20 +273,13 @@ unsafe extern "C" fn MiniSendRec(
     OutputBufferLength: ULONG,
     ReturnOutputBufferLength: PULONG,
 ) -> NTSTATUS {
-    // let mut msg: PCHAR = "Rust from kernel".as_mut_ptr() as *mut i8;
-    unsafe {
-        DbgPrint(
-            "Rust message from application: %s\n\0".as_ptr() as _,
-            InputBuffer as PCHAR,
-        );
-    }
+    let mut msg: PCHAR = "Rust from kernel\n\0".as_bytes().as_ptr() as *mut i8;
+    DbgPrint(
+        "Rust message from application: %s".as_ptr() as _,
+        InputBuffer as *mut i8,
+    );
 
-    unsafe {
-        strcpy(
-            OutputBuffer as PCHAR,
-            "Rust from kernel".as_ptr() as *mut i8,
-        );
-    }
+    strcpy(OutputBuffer as PCHAR, msg);
 
     STATUS_SUCCESS
 }

@@ -1,4 +1,4 @@
-//source idea: https://os.phil-opp.com/minimal-rust-kernel/
+// source idea: https://os.phil-opp.com/minimal-rust-kernel/
 #![no_std]
 #![feature(lang_items)]
 #![feature(alloc_error_handler)]

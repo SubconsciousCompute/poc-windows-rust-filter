@@ -6,3 +6,6 @@ members = [
     "windows-kernel-sys",
     "windows-rust-minifilter",
 ]
+exclude = [
+    "windows-rust-application"
+]

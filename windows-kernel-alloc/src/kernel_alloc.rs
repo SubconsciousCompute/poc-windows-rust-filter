@@ -1,11 +1,10 @@
-//it must be defined in lib.rs
-//#![feature(alloc_error_handler)]
+// It must be defined in lib.rs
+// #![feature(alloc_error_handler)]
 #[allow(unused_imports)]
 use alloc::alloc::handle_alloc_error;
 use core::alloc::{GlobalAlloc, Layout};
 use windows_kernel_sys::base::{SIZE_T, ULONG64};
 use windows_kernel_sys::ntoskrnl::{ExAllocatePool2, ExFreePool};
-
 
 pub const POOL_TAG: u32 = u32::from_ne_bytes(*b"TSUR");
 pub const POOL_FLAG_PAGED: ULONG64 = 0x0000000000000100;

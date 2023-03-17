@@ -21,6 +21,8 @@ You can set up a VM for testing by following [DEBUG](DEBUG.md).
 
 ## Building
 
+From inside [windows-rust-minifilter](windows-rust-minifilter), run:
+
 `cargo make --profile production all`
 
 **Note: You might need to run `cargo clean` before rebuilding again.**

@@ -1,4 +1,2 @@
-/target
-/Cargo.lock
-
-DriverCertificate.cer
+Cargo.lock
+/target/

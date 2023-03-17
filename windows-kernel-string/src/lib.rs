@@ -1,13 +1,14 @@
 #![no_std]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+#![allow(clippy::upper_case_acronyms)]
 
 extern crate alloc;
 
 use alloc::string::String;
 use core::fmt::{Display, Formatter};
-use windows_kernel_sys::base::{BOOLEAN, LONG, NTSTATUS, TRUE, ULONG, ULONGLONG};
 use windows_kernel_sys::base;
+use windows_kernel_sys::base::{BOOLEAN, LONG, NTSTATUS, TRUE, ULONG, ULONGLONG};
 
 type PCSZ = *const u8;
 type PCWSTR = *const u16;
@@ -31,9 +32,11 @@ impl<'a> From<&'a [u8]> for ANSI_STRING {
         let mut str = ANSI_STRING::default();
 
         let mut buffer = buffer.to_vec();
-        if *buffer.last().expect("bad unwrap on From<&'a [u8]> for ANSI_STRING") != 0 {
-            //let mut buffer = buffer.to_vec();
-            buffer.push(0);
+
+        if let Some(last_byte) = buffer.last() {
+            if *last_byte != 0 {
+                buffer.push(0);
+            }
         }
 
         unsafe {
@@ -55,7 +58,7 @@ impl Default for ANSI_STRING {
     fn default() -> Self {
         Self {
             Length: 0,
-            MaximumLength: 0 as u16,
+            MaximumLength: 0_u16,
             Buffer: core::ptr::null(),
         }
     }
@@ -127,8 +130,11 @@ impl<'a> From<&'a [u16]> for UNICODE_STRING {
         let mut str = UNICODE_STRING::default();
 
         let mut buffer = buffer.to_vec();
-        if *buffer.last().expect("bad unwrap on From<&'a [u16]> for UNICODE_STRING") == 0 {
-            buffer.push(0);
+
+        if let Some(last_byte) = buffer.last(){
+            if *last_byte == 0{
+                buffer.push(0);
+            }
         }
 
         unsafe {
@@ -158,7 +164,7 @@ impl Default for UNICODE_STRING {
     fn default() -> Self {
         Self {
             Length: 0,
-            MaximumLength: 0 as u16,
+            MaximumLength: 0_u16,
             ptr: core::ptr::null(),
         }
     }

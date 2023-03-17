@@ -1,0 +1,25 @@
+[package]
+name = "rust"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dependencies.windows-sys]
+version = "0.45.0"
+features = [
+    "Win32_Storage_InstallableFileSystems",
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Threading",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Diagnostics_Debug",
+]
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3

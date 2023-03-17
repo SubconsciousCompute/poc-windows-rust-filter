@@ -34,7 +34,8 @@ pub unsafe fn InitializeObjectAttributes(
     s: windows_kernel_sys::base::PVOID,
 ) {
     use core::mem::size_of;
-    (*p).Length = size_of::<windows_kernel_sys::base::OBJECT_ATTRIBUTES>() as  windows_kernel_sys::base::ULONG;
+    (*p).Length =
+        size_of::<windows_kernel_sys::base::OBJECT_ATTRIBUTES>() as windows_kernel_sys::base::ULONG;
     (*p).RootDirectory = r;
     (*p).Attributes = a;
     (*p).ObjectName = n;

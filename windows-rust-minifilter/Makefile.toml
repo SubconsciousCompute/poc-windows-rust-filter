@@ -9,10 +9,10 @@ cargo b %BUILD_FLAGS%
 '''
 
 [env.development]
-TARGET_PATH = "target/x86_64-pc-windows-msvc/debug"
+TARGET_PATH = "../target/x86_64-pc-windows-msvc/debug"
 
 [env.production]
-TARGET_PATH = "target/x86_64-pc-windows-msvc/release"
+TARGET_PATH = "../target/x86_64-pc-windows-msvc/release"
 BUILD_FLAGS = "--release"
 
 [tasks.rename]

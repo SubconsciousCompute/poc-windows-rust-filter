@@ -36,9 +36,14 @@ should make an `.inf` file but lazy thimes)
 - Load Group to `FSFilter Activity Monitor`
 - Altitude to `37777`
 
-You should be able to see the list of open files in the Debugger.
+You should be able to see the list of open files in the Debugger (You will need to remove comments
+in [`G_CALLBACKS`](windows-rust-minifilter/src/lib.rs) global array).
 
 ![osrloader](readme_resources/osrloader.png)
+
+You can also communicate with user space application by using [windows-rust-application](windows-rust-application).
+
+![user](readme_resources/user.png)
 
 ## References
 

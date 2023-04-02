@@ -17,8 +17,8 @@
 - 🟢 Disable Memory integrity ![img.png](readme_resources/disable_memory_integrity.png)
 - 🟢 Run `bcdedit /set hypervisorlaunchtype off`
 - 🟢 Install [VMware](https://www.vmware.com/in/products/workstation-player.html)
-- [Download Windows](https://www.microsoft.com/software-download/windows11) and follow any tutorial to set up a windows
-  VM (You might want to configure space to be around 50GB+, ram around 4GB, enable hardware acceleration and so on)
+- [Download Windows](https://www.microsoft.com/software-download/windows11) and follow any tutorial to set up a Windows
+  VM (You might want to configure space to be around 50GB+, ram around 4GB, enable hardware acceleration, and so on)
     - 🔵 You can skip Microsoft sign in by using banned email id, eg: use `no@thankyou.com` and type in any password, you
       should now be able to skip the sign-in process
     - 🔵 Install `VMware tools`
@@ -38,7 +38,7 @@
       the [tutorial here](https://github.com/4d61726b/VirtualKD-Redux/blob/master/VirtualKD-Redux/Docs/Tutorial.md)
     - 🔵 `F8` bcdedit/debug and Select `Disable Driver Sig...` ![img.png](readme_resources/boot.png)
     - 🟢 Now open `vmmon64.exe` as administrator
-    - 🔵 Now open the windows VM machine, if you have followed correctly then you WinDbg should launch automatically and
+    - 🔵 Now open the Windows VM machine, if you have followed correctly then you WinDbg should launch automatically and
       windows boot-up should halt till you `Debug -> Go` in WinDbg
     - 🟢 Now goto `Debug -> Break`, followed by `File -> Symbol File Path ...` and
       put `SRV*c:\symbols* http://msdl.microsoft.com/download/symbols`, click on `Reload` and

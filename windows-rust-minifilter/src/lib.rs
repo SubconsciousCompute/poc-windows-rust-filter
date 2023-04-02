@@ -158,7 +158,7 @@ pub extern "system" fn DriverEntry(
     let mut name = "\\mf";
 
     unsafe {
-        DbgPrint("Hello from Rust!\n\0".as_ptr() as _);
+        DbgPrint("Hello from Rust kernel space!\n\0".as_ptr() as _);
     }
 
     // driver.DriverUnload = Some(driver_exit);
@@ -169,16 +169,12 @@ pub extern "system" fn DriverEntry(
     let mut status: NTSTATUS =
         unsafe { FltRegisterFilter(driver, &G_FILTER_REGISTRATION, &mut G_MINIFILTER_HANDLE) };
 
-    unsafe {
-        DbgPrint("1 Here\n\0".as_ptr() as _);
-    }
-
     if !NT_SUCCESS!(status) {
         return status;
     }
 
     unsafe {
-        DbgPrint("2 Here\n\0".as_ptr() as _);
+        DbgPrint("Filter Registration Successful!\n\0".as_ptr() as _);
     }
 
     status = unsafe { FltBuildDefaultSecurityDescriptor(&mut sd, FLT_PORT_ALL_ACCESS) };
@@ -196,7 +192,7 @@ pub extern "system" fn DriverEntry(
             );
         }
         unsafe {
-            DbgPrint("3 Here\n\0".as_ptr() as _);
+            DbgPrint("Filter Security Descriptor successful!\n\0".as_ptr() as _);
         }
 
         status = unsafe {
@@ -216,13 +212,9 @@ pub extern "system" fn DriverEntry(
             FltFreeSecurityDescriptor(sd);
         }
 
-        unsafe {
-            DbgPrint("4 Here\n\0".as_ptr() as _);
-        }
-
         if NT_SUCCESS!(status) {
             unsafe {
-                DbgPrint("5 Here\n\0".as_ptr() as _);
+                DbgPrint("Filter communication Port Successful!\n\0".as_ptr() as _);
             }
             // driver.DriverUnload = Some(driver_exit);
 
@@ -231,7 +223,7 @@ pub extern "system" fn DriverEntry(
 
             if !NT_SUCCESS!(status) {
                 unsafe {
-                    DbgPrint("6 Here\0\n".as_ptr() as _);
+                    DbgPrint("Filter filtering Successful!\0\n".as_ptr() as _);
                 }
                 unsafe {
                     FltUnregisterFilter(G_MINIFILTER_HANDLE);
@@ -255,13 +247,13 @@ unsafe extern "C" fn MiniConnect(
     ConnectionPortCookie: *mut PVOID,
 ) -> NTSTATUS {
     CLIENT_PORT = ClientPort;
-    DbgPrint("Rust connect from application\n\0".as_ptr() as _);
+    DbgPrint("Rust connect from application!\n\0".as_ptr() as _);
 
     STATUS_SUCCESS
 }
 
 unsafe extern "C" fn MiniDisconnect(ConnectionCookie: PVOID) {
-    DbgPrint("Rust disconnect form application\n\0".as_ptr() as _);
+    DbgPrint("Rust disconnect form application!\n\0".as_ptr() as _);
     FltCloseClientPort(G_MINIFILTER_HANDLE, &mut CLIENT_PORT);
 }
 
@@ -273,7 +265,7 @@ unsafe extern "C" fn MiniSendRec(
     OutputBufferLength: ULONG,
     ReturnOutputBufferLength: PULONG,
 ) -> NTSTATUS {
-    let mut msg: PCHAR = "Rust from kernel\n\0".as_bytes().as_ptr() as *mut i8;
+    let mut msg: PCHAR = "Hello Rust from kernel\n\0".as_bytes().as_ptr() as *mut i8;
     DbgPrint(
         "Rust message from application: %s".as_ptr() as _,
         InputBuffer as *mut i8,

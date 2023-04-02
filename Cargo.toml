@@ -5,6 +5,7 @@ members = [
     "windows-kernel-string",
     "windows-kernel-sys",
     "windows-rust-minifilter",
+    "windows-kernel-mutex",
 ]
 exclude = [
     "windows-rust-application"

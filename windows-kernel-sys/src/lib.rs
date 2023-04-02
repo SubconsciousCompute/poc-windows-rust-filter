@@ -6,5 +6,6 @@
 pub mod base;
 pub mod fltmgr;
 pub mod ntoskrnl;
+pub mod mutex;
 
 pub use cty::*;

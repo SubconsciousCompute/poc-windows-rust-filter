@@ -1,4 +1,5 @@
 // source idea: https://os.phil-opp.com/minimal-rust-kernel/
+
 #![no_std]
 #![feature(lang_items)]
 #![feature(alloc_error_handler)]
@@ -18,6 +19,9 @@ static GLOBAL: kernel_alloc::KernelAlloc = kernel_alloc::KernelAlloc;
 #[export_name = "_fltused"]
 static _FLTUSED: i32 = 0;
 
+/// When using the alloc crate it seems like it does some unwinding. Adding this
+/// export satisfies the compiler but may introduce undefined behaviour when a
+/// panic occurs.
 #[cfg(not(test))]
 #[no_mangle]
 extern "system" fn __CxxFrameHandler3(_: *mut u8, _: *mut u8, _: *mut u8, _: *mut u8) -> i32 {
@@ -48,6 +52,7 @@ fn unrecoverable_error(info: &PanicInfo) {
     }
 }
 
+// TODO: configuration option that allows users to choose how to handle unrecoverable errors (e.g. log them, crash the kernel, etc.)
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
